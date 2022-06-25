@@ -9,3 +9,6 @@ A Telegram bot, that gathers data from wakatime API and calculates total time sp
 * Every user should have a separated table in db in order to make it possible to many users to use it
 * Expected tech stack - aiogram, SQLAlchemy
 * Hosting
+
+### TODO notes
+[helps with OAauth 2.0](https://rauth.readthedocs.io/en/latest/)
