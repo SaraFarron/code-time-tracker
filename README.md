@@ -10,5 +10,60 @@ A Telegram bot, that gathers data from wakatime API and calculates total time sp
 * Expected tech stack - aiogram, SQLAlchemy
 * Hosting
 
+### SQL Tables
+* User
+  * total
+    * editors
+    * grand total
+    * languages
+    * machines
+    * operating systems
+    * projects
+  * $last week
+    * same_structure_as_total
+  * $(last - 1) week
+  * ...
+  * $first week
+
 ### TODO notes
 [helps with OAauth 2.0](https://rauth.readthedocs.io/en/latest/)
+
+### Work in progress notes
+response structure:
+* cumulative_total
+  * decimal
+  * digital
+  * seconds
+  * text
+* data [
+  * categories
+    * decimal
+    * digital
+    * hours
+    * minutes
+    * name
+    * percent
+    * seconds
+    * text
+    * total_seconds
+  * dependencies
+    * $categories_structure
+  * editors
+    * $categories_structure
+  * grand_total
+    * $categories_structure - (name, text, percent)
+  * languages
+    * $categories_structure
+  * machines
+    * $categories_structure
+  * operating_systems
+    * $categories_structure
+  * projects
+    * $categories_structure
+  * range
+    * date
+    * end
+    * start
+    * text
+    * timezone
+* ]
