@@ -46,6 +46,19 @@ with Session(engine) as session:
     session.commit()
 
 
+def create_object(category: str, name: str, time: str, percent: float):
+    match category:
+        case 'editors':
+            pass
+        case 'languages':
+            pass
+        case 'operating_systems':
+            pass
+        case 'projects':
+            pass
+    pass
+
+
 def main():
     start = (date.today() - timedelta(days=120)).strftime('%Y-%m-%d')
     end = date.today().strftime('%Y-%m-%d')
