@@ -55,7 +55,7 @@ response structure:
   * languages
     * $categories_structure
   * machines
-    * $categories_structure
+    * $categories_structure + (machine_name_id)
   * operating_systems
     * $categories_structure
   * projects
