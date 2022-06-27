@@ -1,19 +1,16 @@
 from sqlalchemy import (
-    Column, ForeignKey, String, Integer,
+    Column, ForeignKey, String, Integer, Float,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
 
-class ItemBase(Base):
+class Item(Base):
     id = Column(Integer, primary_key=True)
-    editors = relationship('editors', back_populates=Base.__tablename__)
-    grand_total = relationship('grand_total', back_populates=Base.__tablename__)
-    languages = relationship('languages', back_populates=Base.__tablename__)
-    machines = relationship('machines', back_populates=Base.__tablename__)
-    operating_systems = relationship('operating_systems', back_populates=Base.__tablename__)
-    projects = relationship('projects', back_populates=Base.__tablename__)
+    name = Column(String)
+    time = Column(Float)
+    percent = Column(Float)
 
 
 class User(Base):
@@ -33,5 +30,24 @@ class Week(Base):
     user = relationship('user', back_populates='week', uselist=False)
 
 
-class Total(Base, ItemBase):
+class Total(Base):
     __tablename__ = 'total'
+
+    id = Column(Integer, primary_key=True)
+    time = Column(Float)
+
+
+class Editor(Base, Item):
+    __tablename__ = 'editor'
+
+
+class Language(Base, Item):
+    __tablename__ = 'language'
+
+
+class Machine(Base, Item):
+    __tablename__ = 'machine'
+
+
+class OperatingSystem(Base, Item):
+    __tablename__ = 'operating_system'

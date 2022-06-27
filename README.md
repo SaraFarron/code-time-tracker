@@ -14,11 +14,17 @@ A Telegram bot, that gathers data from wakatime API and calculates total time sp
 * User
   * total
     * editors
+      * time
+      * percent
     * grand total
     * languages
+      * same_structure_as_editors
     * machines
+      * same_structure_as_editors
     * operating systems
+      * same_structure_as_editors
     * projects
+      * same_structure_as_editors
   * $last week
     * same_structure_as_total
   * $(last - 1) week
