@@ -1,7 +1,8 @@
+import bcrypt
 from sqlalchemy import (
-    Column, ForeignKey, String, Integer, Float, Date
+    Column, ForeignKey, String, Integer, Float, Date,
 )
-from sqlalchemy.orm import declarative_base, relationship, declared_attr
+from sqlalchemy.orm import declarative_base, relationship, declared_attr, validates
 
 Base = declarative_base()
 
@@ -23,6 +24,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(30))
     day = relationship('Day')
+    api_key = Column(String)
 
 
 class Day(Base):
