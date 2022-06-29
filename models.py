@@ -1,28 +1,20 @@
 from sqlalchemy import (
-    Column, ForeignKey, String, Integer, Float, DateTime
+    Column, ForeignKey, String, Integer, Float, Date
 )
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, relationship, declared_attr
 
 Base = declarative_base()
 
 
-class Item(Base):
+class Item:
     id = Column(Integer, primary_key=True)
     name = Column(String)
     time = Column(Float)
     percent = Column(Float)
-    week_id = Column(Integer, ForeignKey('week.id'))
 
-
-class Stats(Base):
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.id'))
-    editors = relationship('Editor')
-    total = relationship('Total', back_populates='week', uselist=False)
-    languages = relationship('Language')
-    machines = relationship('Machine')
-    operating_systems = relationship('OperatingSystem')
-    projects = relationship('Project')
+    @declared_attr
+    def day_id(self):
+        return Column(Integer, ForeignKey('day.id'))
 
 
 class User(Base):
@@ -30,19 +22,21 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(30))
-    # total = relationship('total', back_populates="user", uselist=False)
-    week = relationship('Week')
+    day = relationship('Day')
 
 
-class Week(Base, Stats):
-    __tablename__ = 'week'
+class Day(Base):
+    __tablename__ = 'day'
 
-    start = Column(DateTime)
-    end = Column(DateTime)
-
-
-class TotalStats(Base, Stats):
-    __tablename__ = 'total_stats'
+    id = Column(Integer, primary_key=True)
+    date = Column(Date)
+    editors = relationship('Editor')
+    total = relationship('Total', back_populates='day', uselist=False)
+    languages = relationship('Language')
+    machines = relationship('Machine')
+    operating_systems = relationship('OperatingSystem')
+    projects = relationship('Project')
+    user_id = Column(Integer, ForeignKey('user.id'))
 
 
 class Total(Base):
@@ -50,8 +44,8 @@ class Total(Base):
 
     id = Column(Integer, primary_key=True)
     time = Column(Float)
-    week_id = Column(Integer, ForeignKey('week.id'))
-    week = relationship('Week', back_populates='week')
+    day_id = Column(Integer, ForeignKey('day.id'))
+    day = relationship('Day', back_populates='total')
 
 
 class Editor(Base, Item):

@@ -9,14 +9,14 @@ from sqlalchemy import create_engine
 
 from models import (
     Total, Editor, Language, Machine,
-    OperatingSystem, Project, Base, Week,
+    OperatingSystem, Project, Base, Day,
     User
 )
 
 load_dotenv()
 
 # db initialisation
-engine = create_engine('sqlite://sqlite.db', echo=True, future=True)
+engine = create_engine('sqlite:///sqlite.db', echo=True, future=True)
 Base.metadata.create_all(engine)
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
@@ -44,7 +44,7 @@ def create_week_periods(start: datetime, end: datetime) -> list:
     return weekly_data
 
 
-def get_week_info(start: datetime, end: datetime, api_key) -> dict:
+def get_info(start: datetime, end: datetime, api_key) -> dict:
     params = {
         'api_key': api_key,
         'start': start.strftime(DATE_FORMAT),
@@ -57,14 +57,14 @@ def get_week_info(start: datetime, end: datetime, api_key) -> dict:
     return response.json()
 
 
-def add_base_objects(klass, object_dict: dict, week_id: int) -> list:
+def add_base_objects(klass, object_dict: dict, day_id: int) -> list:
     base_objects = []
     for o in object_dict:
         obj = klass(
             name=o['name'],
             time=o['total_seconds'],
             percent=o['percent'],
-            week_id=week_id,
+            day_id=day_id,
         )
         base_objects.append(obj)
 
@@ -72,43 +72,44 @@ def add_base_objects(klass, object_dict: dict, week_id: int) -> list:
 
 
 def update_tracking_info(session: Session, start: datetime, end: datetime, user: User) -> None:
-    weeks = create_week_periods(start, end)
+    # weeks = create_week_periods(start, end)
+    tracker_data = get_info(start, end, getenv('API_KEY'))['data']
 
-    for week in weeks:
-        week_start, week_end = week['start'], week['end']
-        week_data = get_week_info(week_start, week_end, getenv('API_KEY'))['data']
+    for day in tracker_data:
         sql_objects = []
+        date = datetime.strptime(day['range']['date'], DATE_FORMAT)
+        day_obj = Day(user_id=user.id, date=date)
+        session.add(day_obj)
+        session.commit()
+        day_obj = session.query(Day).filter(Day.user_id == user.id).first()  # Might need to order by date
 
-        for k, v in week_data.items():
-            week = Week(user_id=user.id, start=week_start, end=week_end)
-            session.add(week)
-            session.commit()
-            week = session.query(Week).filter(Week.user_id == user.id).first()  # Might need to order by date
-
+        for k, v in day.items():
             match k:
                 case 'editors':
-                    objects = add_base_objects(Editor, v, week.id)
-                    week.editors.extend(objects)
+                    objects = add_base_objects(Editor, v, day_obj.id)
+                    day_obj.editors.extend(objects)
                 case 'grand_total':
                     ttl_obj = Total(
                         time=v['total_seconds'],
-                        week=week,
-                        week_id=week.id,
+                        day=day_obj,
+                        day_id=day_obj.id,
                     )
-                    sql_objects.append(ttl_obj)
-                    week.total.append(ttl_obj)
+                    objects = [ttl_obj, ]
+                    day_obj.total = ttl_obj
                 case 'languages':
-                    objects = add_base_objects(Language, v, week.id)
-                    week.languages.extend(objects)
+                    objects = add_base_objects(Language, v, day_obj.id)
+                    day_obj.languages.extend(objects)
                 case 'machines':
-                    objects = add_base_objects(Machine, v, week.id)
-                    week.machines.extend(objects)
+                    objects = add_base_objects(Machine, v, day_obj.id)
+                    day_obj.machines.extend(objects)
                 case 'operating_systems':
-                    objects = add_base_objects(OperatingSystem, v, week.id)
-                    week.operating_systems.extend(objects)
+                    objects = add_base_objects(OperatingSystem, v, day_obj.id)
+                    day_obj.operating_systems.extend(objects)
                 case 'projects':
-                    objects = add_base_objects(Project, v, week.id)
-                    week.projects.extend(objects)
+                    objects = add_base_objects(Project, v, day_obj.id)
+                    day_obj.projects.extend(objects)
+                case _: continue
+            sql_objects += objects
             session.add_all(sql_objects)
             session.commit()
 
@@ -122,5 +123,9 @@ def main():
         user = User(name='testuser')
         session.add(user)
         session.commit()
-        user = session.query(User).get(id=1)
+        user = session.query(User).get(1)
         update_tracking_info(session, start, end, user)
+
+
+if __name__ == '__main__':
+    main()
