@@ -22,6 +22,7 @@ class User(Base):
     __tablename__ = 'user'
 
     id = Column(Integer, primary_key=True)
+    telegram_id = Column(Integer, unique=True)
     name = Column(String(30))
     day = relationship('Day')
     api_key = Column(String)

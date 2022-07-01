@@ -2,6 +2,8 @@ from itertools import groupby
 from os import getenv
 from requests import get
 from datetime import timedelta, datetime
+
+from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 
 from models import (
@@ -36,12 +38,13 @@ def create_week_periods(start: datetime, end: datetime) -> list:
 
 
 def get_info(start: datetime, end: datetime, api_key) -> dict:
+    url = 'https://wakatime.com/api/v1/users/current/summaries'
     params = {
         'api_key': api_key,
         'start': start.strftime(DATE_FORMAT),
         'end': end.strftime(DATE_FORMAT)
     }
-    response = get('https://wakatime.com/api/v1/users/current/summaries', params=params)
+    response = get(url, params=params)
     assert response.status_code == 200
 
     print('successfully retrieved weekly data')
@@ -106,13 +109,22 @@ def update_user_tracking_info(session: Session, start: datetime, end: datetime, 
     print('tracking info updated')
 
 
-def all_data(user: str) -> str:
-    return 'TODO all data ' + user
+def all_data(user_id: int, engine: MockConnection) -> str:
+    return 'TODO all data ' + str(user_id)
 
 
-def last_week_data(user: str) -> str:
-    return 'TODO last week stats ' + user
+def last_week_data(user_id: int, engine: MockConnection) -> str:
+    return 'TODO last week stats ' + str(user_id)
 
 
-def update_user_credentials(key: str, user: str) -> str:
-    return 'TODO update credentials ' + key + ' ' + user
+def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> str:
+    url = 'https://wakatime.com/api/v1/users/current/all_time_since_today'
+    response = get(url, params={'api_key': key})
+    if response.status_code == 200:
+        with Session(engine) as session:
+            user = session.query(User).filter(User.telegram_id == user_id)
+            user.api_key = key
+            session.commit()
+        return 'credentials updated successfully!'
+    print(response.text)
+    return 'Please send a valid api key, you can get it from your Wakatime profile page'

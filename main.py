@@ -53,15 +53,31 @@ async def send_help(message: Message):
     await message.answer(description)
 
 
+@dp.message_handler(Command('start'))
+async def create_new_user(message: Message):
+    user_id = message.from_user.id
+    username = message.from_user.username
+    with Session(engine) as session:
+        user = User(
+            telegram_id=user_id,
+            name=username,
+        )
+        session.add(user)
+        session.commit()
+
+    logger.info('new user registered ' + username)
+    await message.answer('TODO message with greetings')
+
+
 @dp.callback_query_handler(text=['retrieve_all', 'last_week'])
 async def show_tracking_stats(call: CallbackQuery):
     match call.data:
         case 'retrieve_all':
             logger.info('sent all stats to ' + call.from_user.username)
-            await call.message.answer(all_data('TODO'))
+            await call.message.answer(all_data(call.from_user.id, engine))
         case 'last_week':
             logger.info('sent last stats to ' + call.from_user.username)
-            await call.message.answer(last_week_data('TODO'))
+            await call.message.answer(last_week_data(call.from_user.id, engine))
         case _: await call.answer()
 
 
@@ -76,7 +92,7 @@ async def update_key(call: CallbackQuery):
 @dp.message_handler(state=UpdateWakatimeKey.check_key)
 async def update_result(message: Message, state: FSMContext):
     user_api_key = message.text
-    await message.answer(update_user_credentials(user_api_key, 'TODO'))
+    await message.answer(update_user_credentials(user_api_key, message.from_user.id, engine))
     await state.finish()
 
 
