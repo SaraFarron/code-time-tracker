@@ -12,7 +12,7 @@ def add_inline_buttons(buttons: dict[str: str], keyboard: InlineKeyboardMarkup) 
     return keyboard
 
 
-def add_reply_buttons(buttons: list[str, ], keyboard: ReplyKeyboardMarkup) -> ReplyKeyboardMarkup:
+def add_reply_buttons(buttons: list[str,], keyboard: ReplyKeyboardMarkup) -> ReplyKeyboardMarkup:
     """Return inline keyboard with buttons added"""
 
     for button_name in buttons:
@@ -21,9 +21,11 @@ def add_reply_buttons(buttons: list[str, ], keyboard: ReplyKeyboardMarkup) -> Re
     return keyboard
 
 
-menu_buttons = [
-    'All time stats',
-    'Last week stats',
-]
-menu = ReplyKeyboardMarkup()
-menu = add_reply_buttons(menu_buttons, menu)
+menu_buttons = {
+    'All time stats': 'retrieve_all',
+    'Last week stats': 'last_week',
+    'Update Wakatime API key': 'update_key',
+}
+
+menu = InlineKeyboardMarkup()
+menu = add_inline_buttons(menu_buttons, menu)

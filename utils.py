@@ -10,7 +10,6 @@ from models import (
     User,
 )
 
-
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 DATE_FORMAT = '%Y-%m-%d'
 
@@ -105,3 +104,15 @@ def update_user_tracking_info(session: Session, start: datetime, end: datetime, 
             session.commit()
 
     print('tracking info updated')
+
+
+def all_data(user: str) -> str:
+    return 'TODO all data ' + user
+
+
+def last_week_data(user: str) -> str:
+    return 'TODO last week stats ' + user
+
+
+def update_user_credentials(key: str, user: str) -> str:
+    return 'TODO update credentials ' + key + ' ' + user
