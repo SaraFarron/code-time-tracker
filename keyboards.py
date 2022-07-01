@@ -12,7 +12,7 @@ def add_inline_buttons(buttons: dict[str: str], keyboard: InlineKeyboardMarkup) 
     return keyboard
 
 
-def add_reply_buttons(buttons: list[str,], keyboard: ReplyKeyboardMarkup) -> ReplyKeyboardMarkup:
+def add_reply_buttons(buttons: list[str, ], keyboard: ReplyKeyboardMarkup) -> ReplyKeyboardMarkup:
     """Return inline keyboard with buttons added"""
 
     for button_name in buttons:

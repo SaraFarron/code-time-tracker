@@ -1,11 +1,9 @@
 import asyncio
-import hashlib
 from datetime import timedelta, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from aiogram import Bot, Dispatcher, executor
-from aiogram.types import Message, ReplyKeyboardRemove, InlineQuery, InputTextMessageContent, InlineQueryResultArticle, \
-    CallbackQuery
+from aiogram.types import Message, CallbackQuery
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -14,9 +12,12 @@ from logging import basicConfig, getLogger, INFO
 from dotenv import load_dotenv
 from os import environ
 
-from models import Base, User
-from utils import update_user_tracking_info, all_data, last_week_data, update_user_credentials
 from keyboards import menu
+from models import Base, User
+from utils import (
+    update_user_tracking_info, all_data, last_week_data,
+    update_user_credentials,
+)
 
 # logger
 basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
