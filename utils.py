@@ -47,7 +47,7 @@ def get_info(start: datetime, end: datetime, api_key) -> dict:
     response = get(url, params=params)
     assert response.status_code == 200
 
-    print('successfully retrieved weekly data')
+    print('successfully retrieved data')
     return response.json()
 
 
@@ -109,11 +109,58 @@ def update_user_tracking_info(session: Session, start: datetime, end: datetime, 
     print('tracking info updated')
 
 
+def get_user_key_or_404(user_id: int, engine: MockConnection):
+    with Session(engine) as session:
+        user = session.query(User).filter(User.telegram_id == user_id)
+    if not user.api_key:
+        raise 'No api key'
+    return user.api_key
+
+
 def all_data(user_id: int, engine: MockConnection) -> str:
+    key = get_user_key_or_404(user_id, engine)
+    url = 'https://wakatime.com/api/v1/users/current/all_time_since_today'
+    response = get(url, params={'api_key': key})
+    assert response.status_code == 200, f'error {response.status_code}'
     return 'TODO all data ' + str(user_id)
 
 
 def last_week_data(user_id: int, engine: MockConnection) -> str:
+    key = get_user_key_or_404(user_id, engine)
+    start = datetime.today() - timedelta(days=7)
+    end = datetime.today()
+    summaries = get_info(start, end, key)['date']
+    grand_total_sum = 0
+    projects, languages, oss, machines = {}, {}, {}, {}
+
+    summaries_text = '<h2> Your week summaries </h2>\n'
+    for day in summaries:
+        summaries_text += f"""
+        ###{day['range']['date']}
+        * total time spent <em>{day['grand_total']['text']}</em>
+        * projects distribution:
+          * {day['projects']}
+        * languages distribution:
+          * {day['languages']}
+        * OS distribution:
+          * {day['operational_systems']}
+        * machines distribution
+          * {day['machines']}
+        """
+
+    summaries_text += f"""
+    ## Total time spent
+    {grand_total_sum}
+    * projects distribution:
+      * {projects}
+    * languages distribution:
+      * {languages}
+    * OS distribution:
+      * {oss}
+    * machines distribution
+      * {machines}
+    """
+
     return 'TODO last week stats ' + str(user_id)
 
 

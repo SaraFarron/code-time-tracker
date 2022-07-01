@@ -92,7 +92,9 @@ async def update_key(call: CallbackQuery):
 @dp.message_handler(state=UpdateWakatimeKey.check_key)
 async def update_result(message: Message, state: FSMContext):
     user_api_key = message.text
-    await message.answer(update_user_credentials(user_api_key, message.from_user.id, engine))
+    await message.answer(
+        update_user_credentials(user_api_key, message.from_user.id, engine)
+    )
     await state.finish()
 
 
@@ -100,7 +102,7 @@ def test_sql_db_update():
     start = (datetime.today() - timedelta(days=120))
     end = datetime.today()
     with Session(engine) as session:
-        # Make if enry is already in db -> skip that
+        # Make if entry is already in db -> skip that
         user = User(name='testuser')
         session.add(user)
         session.commit()
