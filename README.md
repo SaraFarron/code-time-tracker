@@ -12,7 +12,9 @@ A Telegram bot, that gathers data from wakatime API and calculates total time sp
 
 ### TODO notes
 [helps with OAauth 2.0](https://rauth.readthedocs.io/en/latest/)
+
 aiogram has markdown!
 
-
 ### Work in progress notes
+
+get all time/last week data -> update db -> get info from db -> format text

@@ -1,10 +1,10 @@
 from itertools import groupby
-from os import getenv
 from requests import get
 from datetime import timedelta, datetime
 
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from models import (
     Total, Editor, Language, Machine,
@@ -66,7 +66,7 @@ def add_base_objects(klass, object_dict: dict, day_id: int) -> list:
 
 
 def update_user_tracking_info(session: Session, start: datetime, end: datetime, user: User) -> None:
-    tracker_data = get_info(start, end, getenv('API_KEY'))['data']
+    tracker_data = get_info(start, end, user.api_key)['data']
 
     for day in tracker_data:
         sql_objects = []
@@ -101,7 +101,8 @@ def update_user_tracking_info(session: Session, start: datetime, end: datetime, 
                 case 'projects':
                     objects = add_base_objects(Project, v, day_obj.id)
                     day_obj.projects.extend(objects)
-                case _: continue
+                case _:
+                    continue
             sql_objects += objects
             session.add_all(sql_objects)
             session.commit()
@@ -118,11 +119,41 @@ def get_user_key_or_404(user_id: int, engine: MockConnection):
 
 
 def all_data(user_id: int, engine: MockConnection) -> str:
-    key = get_user_key_or_404(user_id, engine)
-    url = 'https://wakatime.com/api/v1/users/current/all_time_since_today'
-    response = get(url, params={'api_key': key})
-    assert response.status_code == 200, f'error {response.status_code}'
+    with Session(engine) as session:
+        user = session.query(User).filter(User.telegram_id == user_id)
+        start_date = datetime.strptime('2010-01-01T00:00:00Z', DATETIME_FORMAT)
+        end_date = datetime.now()
+        update_user_tracking_info(session, start_date, end_date, user)
+        total_time = session.query(
+            func.sum(Day.total.time)).filter(start_date <= Day.date & Day.user_id == user.id
+                                             )
+    #     todo make sql requests for projects, languages, etc.
     return 'TODO all data ' + str(user_id)
+
+
+def add_entries_text(day: dict, text: str, total: dict):
+    entries = ['projects', 'languages', 'editors', 'operating_systems', 'machines']
+    for entry in entries:
+        total_entry = total[entry]
+        total_time = 0
+        for e in day[entry]:
+            entry_name = e['name']
+            entry_seconds = e['total_seconds']
+            total_time += entry_seconds
+
+            text += f"""
+            * {entry} distribution:
+              * {entry_name} - {e['text']}, {e['percent']}%
+            """
+
+            total['grand_total_sum'] += day['grand_total']['total_seconds']
+            if entry_name in total_entry.keys():
+                total_entry[entry_name]['total_seconds'] += entry_seconds
+            else:
+                total_entry[entry_name] = {
+                    'total_seconds': entry_seconds,
+                }
+        total_entry['percent'] = round(total_entry['total_seconds'] / total_time)
 
 
 def last_week_data(user_id: int, engine: MockConnection) -> str:
@@ -130,8 +161,13 @@ def last_week_data(user_id: int, engine: MockConnection) -> str:
     start = datetime.today() - timedelta(days=7)
     end = datetime.today()
     summaries = get_info(start, end, key)['date']
-    grand_total_sum = 0
-    projects, languages, oss, machines = {}, {}, {}, {}
+    totals = {
+        'grand_total_sum': 0,
+        'projects': {},
+        'languages': {},
+        'operation_systems': {},
+        'machines': {},
+    }
 
     summaries_text = '<h2> Your week summaries </h2>\n'
     for day in summaries:
@@ -139,26 +175,20 @@ def last_week_data(user_id: int, engine: MockConnection) -> str:
         ###{day['range']['date']}
         * total time spent <em>{day['grand_total']['text']}</em>
         * projects distribution:
-          * {day['projects']}
-        * languages distribution:
-          * {day['languages']}
-        * OS distribution:
-          * {day['operational_systems']}
-        * machines distribution
-          * {day['machines']}
         """
+        add_entries_text(day, summaries_text, totals)
 
     summaries_text += f"""
     ## Total time spent
-    {grand_total_sum}
+    {totals['grand_total_sum']}
     * projects distribution:
-      * {projects}
+      * {totals['projects']}
     * languages distribution:
-      * {languages}
+      * {totals['languages']}
     * OS distribution:
-      * {oss}
+      * {totals['oss']}
     * machines distribution
-      * {machines}
+      * {totals['machines']}
     """
 
     return 'TODO last week stats ' + str(user_id)
