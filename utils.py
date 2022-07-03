@@ -37,15 +37,14 @@ def create_week_periods(start: datetime, end: datetime) -> list:
     return weekly_data
 
 
-def get_info(start: datetime, end: datetime, api_key) -> dict:
+def get_info(period: str, api_key) -> dict:
     url = 'https://wakatime.com/api/v1/users/current/summaries'
     params = {
         'api_key': api_key,
-        'start': start.strftime(DATE_FORMAT),
-        'end': end.strftime(DATE_FORMAT)
+        'range': period,
     }
     response = get(url, params=params)
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
 
     print('successfully retrieved data')
     return response.json()
@@ -65,8 +64,8 @@ def add_base_objects(klass, object_dict: dict, day_id: int) -> list:
     return base_objects
 
 
-def update_user_tracking_info(session: Session, start: datetime, end: datetime, user: User) -> None:
-    tracker_data = get_info(start, end, user.api_key)['data']
+def update_user_tracking_info(session: Session, period: str, user: User) -> None:
+    tracker_data = get_info(period, user.api_key)['data']
 
     for day in tracker_data:
         sql_objects = []
@@ -118,17 +117,27 @@ def get_user_key_or_404(user_id: int, engine: MockConnection):
     return user.api_key
 
 
+def get_entry_stats(session: Session, klass, day) -> list:
+    return session.query(
+        klass.name, func.sum(klass.time)
+    ).filter(klass.day_id >= day.id).group_by(klass.name).all()
+
+
 def all_data(user_id: int, engine: MockConnection) -> str:
     with Session(engine) as session:
-        user = session.query(User).filter(User.telegram_id == user_id)
-        start_date = datetime.strptime('2010-01-01T00:00:00Z', DATETIME_FORMAT)
-        end_date = datetime.now()
-        update_user_tracking_info(session, start_date, end_date, user)
-        total_time = session.query(
-            func.sum(Day.total.time)).filter(start_date <= Day.date & Day.user_id == user.id
-                                             )
-    #     todo make sql requests for projects, languages, etc.
-    return 'TODO all data ' + str(user_id)
+        user = session.query(User).filter(User.telegram_id == user_id).one()
+        time_period = 'Last 30 Days'
+        update_user_tracking_info(session, time_period, user)
+        start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
+        days = session.query(Day).filter(start_date <= Day.date).all()
+        projects, languages, machines, o_s = [], [], [], []
+        for day in days:
+            projects.extend(get_entry_stats(session, Project, day))
+            languages.extend(get_entry_stats(session, Language, day))
+            machines.extend(get_entry_stats(session, Machine, day))
+            o_s.extend(get_entry_stats(session, OperatingSystem, day))
+
+    return str(days)
 
 
 def add_entries_text(day: dict, text: str, total: dict):
@@ -160,7 +169,8 @@ def last_week_data(user_id: int, engine: MockConnection) -> str:
     key = get_user_key_or_404(user_id, engine)
     start = datetime.today() - timedelta(days=7)
     end = datetime.today()
-    summaries = get_info(start, end, key)['date']
+    time_period = 'Last 7 Days'
+    summaries = get_info(time_period, key)['date']
     totals = {
         'grand_total_sum': 0,
         'projects': {},
@@ -199,9 +209,11 @@ def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> s
     response = get(url, params={'api_key': key})
     if response.status_code == 200:
         with Session(engine) as session:
-            user = session.query(User).filter(User.telegram_id == user_id)
+            user = session.query(User).filter(User.telegram_id == user_id).one()
             user.api_key = key
+            session.add(user)
             session.commit()
         return 'credentials updated successfully!'
     print(response.text)
+    print(response.status_code)
     return 'Please send a valid api key, you can get it from your Wakatime profile page'
