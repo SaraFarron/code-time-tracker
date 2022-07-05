@@ -66,10 +66,14 @@ def add_base_objects(klass, object_dict: dict, day_id: int) -> list:
 
 def update_user_tracking_info(session: Session, period: str, user: User) -> None:
     tracker_data = get_info(period, user.api_key)['data']
+    existing_dates = session.query(Day.date).all()
+    existing_dates = [d[0] for d in existing_dates]
 
     for day in tracker_data:
         sql_objects = []
         date = datetime.strptime(day['range']['date'], DATE_FORMAT)
+        if date in existing_dates:
+            continue
         day_obj = Day(user_id=user.id, date=date)
         session.add(day_obj)
         session.commit()
@@ -114,7 +118,20 @@ def get_user_key_or_404(user_id: int, engine: MockConnection):
 def get_entry_stats(session: Session, klass, day) -> list:
     return session.query(
         klass.name, func.sum(klass.time)
-    ).filter(klass.day_id >= day.id).group_by(klass.name).all()
+    ).filter(klass.day_id == day.id).group_by(klass.name).all()
+
+
+def get_stats_separated(session: Session, days: list, output) -> None:
+    for day in days:
+        output['projects'].extend(get_entry_stats(session, Project, day))
+        output['languages'].extend(get_entry_stats(session, Language, day))
+        output['machines'].extend(get_entry_stats(session, Machine, day))
+        output['o_s'].extend(get_entry_stats(session, OperatingSystem, day))
+        output['total'].extend(
+            session.query(func.sum(Day.total)).filter(Day.id >= day.id).all()
+        )
+
+    output['total'] = [item[0] for item in output['total']]
 
 
 def get_user_stats(session: Session, start_date: datetime) -> dict:
@@ -126,30 +143,28 @@ def get_user_stats(session: Session, start_date: datetime) -> dict:
         'o_s': [],
         'total': [],
     }
-    for day in days:
-        stats['projects'].extend(get_entry_stats(session, Project, day))
-        stats['languages'].extend(get_entry_stats(session, Language, day))
-        stats['machines'].extend(get_entry_stats(session, Machine, day))
-        stats['o_s'].extend(get_entry_stats(session, OperatingSystem, day))
-        stats['total'].extend(
-            session.query(func.sum(Day.total)).filter(Day.id >= day.id).all()
-        )
-
-    stats['total'] = [item[0] for item in stats['total']]
+    get_stats_separated(session, days, stats)
 
     return stats
 
 
 def hours(seconds: float | int) -> str:
-    h = round(seconds / 3600)
-    m = round(seconds / 60 - int(h) * 60)
+    h = int(seconds / 3600)
+    m = round(seconds / 60 - h * 60)
     return f'{h} hrs {m} mins' if h >= 1 else f'{m} mins'
 
 
 def text_from_stats(name: str, stat: list) -> str:
     text = f'{name}\n'
+    stat_dict = {}
     for record in stat:
-        text += f'{record[0]}\t{hours(record[1])}\n'
+        title, value = record[0], record[1]
+        if title in stat_dict.keys():
+            stat_dict[title] += value
+        else:
+            stat_dict[title] = value
+    for k, v in stat_dict.items():
+        text += f'{k}\t{hours(v)}\n'
     return text + '\n'
 
 
@@ -163,8 +178,6 @@ def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str
             start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
         user_stats = get_user_stats(session, start_date)
 
-    print(len(user_stats['projects']))
-    print(len(user_stats['languages']))
     message = f"{hours(sum(user_stats['total']))}\n"
     for k, stat in user_stats.items():
         if k != 'total':
@@ -247,6 +260,4 @@ def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> s
             session.add(user)
             session.commit()
         return 'credentials updated successfully!'
-    print(response.text)
-    print(response.status_code)
     return 'Please send a valid api key, you can get it from your Wakatime profile page'
