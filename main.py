@@ -15,7 +15,7 @@ from os import environ
 from keyboards import menu
 from models import Base, User
 from utils import (
-    update_user_tracking_info, all_data, last_week_data,
+    update_user_tracking_info, stats_message, last_week_data,
     update_user_credentials,
 )
 
@@ -74,10 +74,15 @@ async def show_tracking_stats(call: CallbackQuery):
     match call.data:
         case 'retrieve_all':
             logger.info('sent all stats to ' + call.from_user.username)
-            await call.message.answer(all_data(call.from_user.id, engine))
+            text = stats_message(call.from_user.id, engine, 'Last 30 Days')
+            if len(text) > 4096:
+                await call.message.answer(text[:4096])
+                await call.message.answer(text[4096:])
+            else:
+                await call.message.answer(text)
         case 'last_week':
             logger.info('sent last stats to ' + call.from_user.username)
-            await call.message.answer(last_week_data(call.from_user.id, engine))
+            await call.message.answer(stats_message(call.from_user.id, engine, 'Last 7 Days'))
         case _: await call.answer()
 
 

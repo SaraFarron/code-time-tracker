@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
 from models import (
-    Total, Editor, Language, Machine,
+    Editor, Language, Machine,
     OperatingSystem, Project, Day,
     User,
 )
@@ -81,13 +81,7 @@ def update_user_tracking_info(session: Session, period: str, user: User) -> None
                     objects = add_base_objects(Editor, v, day_obj.id)
                     day_obj.editors.extend(objects)
                 case 'grand_total':
-                    ttl_obj = Total(
-                        time=v['total_seconds'],
-                        day=day_obj,
-                        day_id=day_obj.id,
-                    )
-                    objects = [ttl_obj, ]
-                    day_obj.total = ttl_obj
+                    day_obj.total = v['total_seconds']
                 case 'languages':
                     objects = add_base_objects(Language, v, day_obj.id)
                     day_obj.languages.extend(objects)
@@ -123,21 +117,60 @@ def get_entry_stats(session: Session, klass, day) -> list:
     ).filter(klass.day_id >= day.id).group_by(klass.name).all()
 
 
-def all_data(user_id: int, engine: MockConnection) -> str:
+def get_user_stats(session: Session, start_date: datetime) -> dict:
+    days = session.query(Day).filter(start_date <= Day.date).all()
+    stats = {
+        'projects': [],
+        'languages': [],
+        'machines': [],
+        'o_s': [],
+        'total': [],
+    }
+    for day in days:
+        stats['projects'].extend(get_entry_stats(session, Project, day))
+        stats['languages'].extend(get_entry_stats(session, Language, day))
+        stats['machines'].extend(get_entry_stats(session, Machine, day))
+        stats['o_s'].extend(get_entry_stats(session, OperatingSystem, day))
+        stats['total'].extend(
+            session.query(func.sum(Day.total)).filter(Day.id >= day.id).all()
+        )
+
+    stats['total'] = [item[0] for item in stats['total']]
+
+    return stats
+
+
+def hours(seconds: float | int) -> str:
+    h = round(seconds / 3600)
+    m = round(seconds / 60 - int(h) * 60)
+    return f'{h} hrs {m} mins' if h >= 1 else f'{m} mins'
+
+
+def text_from_stats(name: str, stat: list) -> str:
+    text = f'{name}\n'
+    for record in stat:
+        text += f'{record[0]}\t{hours(record[1])}\n'
+    return text + '\n'
+
+
+def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str:
     with Session(engine) as session:
         user = session.query(User).filter(User.telegram_id == user_id).one()
-        time_period = 'Last 30 Days'
         update_user_tracking_info(session, time_period, user)
-        start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
-        days = session.query(Day).filter(start_date <= Day.date).all()
-        projects, languages, machines, o_s = [], [], [], []
-        for day in days:
-            projects.extend(get_entry_stats(session, Project, day))
-            languages.extend(get_entry_stats(session, Language, day))
-            machines.extend(get_entry_stats(session, Machine, day))
-            o_s.extend(get_entry_stats(session, OperatingSystem, day))
+        if '7' in time_period:
+            start_date = datetime.today() - timedelta(days=7)
+        else:
+            start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
+        user_stats = get_user_stats(session, start_date)
 
-    return str(days)
+    print(len(user_stats['projects']))
+    print(len(user_stats['languages']))
+    message = f"{hours(sum(user_stats['total']))}\n"
+    for k, stat in user_stats.items():
+        if k != 'total':
+            message += text_from_stats(k, stat)
+
+    return message
 
 
 def add_entries_text(day: dict, text: str, total: dict):
@@ -207,7 +240,7 @@ def last_week_data(user_id: int, engine: MockConnection) -> str:
 def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> str:
     url = 'https://wakatime.com/api/v1/users/current/all_time_since_today'
     response = get(url, params={'api_key': key})
-    if response.status_code == 200:
+    if response.status_code == 200 or response.status_code == 202:
         with Session(engine) as session:
             user = session.query(User).filter(User.telegram_id == user_id).one()
             user.api_key = key

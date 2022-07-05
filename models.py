@@ -34,21 +34,12 @@ class Day(Base):
     id = Column(Integer, primary_key=True)
     date = Column(Date)
     editors = relationship('Editor')
-    total = relationship('Total', back_populates='day', uselist=False)
+    total = Column(Float)
     languages = relationship('Language')
     machines = relationship('Machine')
     operating_systems = relationship('OperatingSystem')
     projects = relationship('Project')
     user_id = Column(Integer, ForeignKey('user.id'))
-
-
-class Total(Base):
-    __tablename__ = 'total'
-
-    id = Column(Integer, primary_key=True)
-    time = Column(Float)
-    day_id = Column(Integer, ForeignKey('day.id'))
-    day = relationship('Day', back_populates='total')
 
 
 class Editor(Base, Item):
