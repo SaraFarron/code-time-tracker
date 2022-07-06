@@ -35,9 +35,7 @@ pybabel compile -d locales -D time_tracker
 ### TODO notes
 [helps with OAauth 2.0](https://rauth.readthedocs.io/en/latest/)
 
-update db func should check if it already has new data
-aiogram has markdown!
+Make a scheduled task!
 
 ### Work in progress notes
 
-get all time/last week data -> update db -> get info from db -> format text
