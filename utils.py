@@ -1,7 +1,7 @@
 from itertools import groupby
 from requests import get
 from datetime import timedelta, datetime
-from aiogram.utils.markdown import text, bold, italic, code, escape_md
+from aiogram.utils.markdown import bold, pre
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -134,8 +134,8 @@ def hours(seconds: float | int) -> str:
     return f'{h} hrs {m} mins' if h >= 1 else f'{m} mins'
 
 
-def text_from_stats(name: str, stat: list) -> str:
-    string = bold(f'{name}\n')
+def text_from_stats(name: str, stat: list, total_time: float | int) -> str:
+    string = bold(f'{name}\n\n')
     stat_dict = {}
     stat = sorted(stat, key=lambda x: x[1], reverse=True)
     for record in stat:
@@ -145,7 +145,8 @@ def text_from_stats(name: str, stat: list) -> str:
         else:
             stat_dict[title] = value
     for k, v in stat_dict.items():
-        string += code(f'{k} {hours(v)}\n')
+        percent = round(v / total_time * 100, 1)
+        string += pre(f'{k} {hours(v)} {percent}%')
     return string + '\n'
 
 
@@ -159,10 +160,11 @@ def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str
             start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
         user_stats = get_user_stats(session, start_date)
 
-    message = bold(f"Total spent coding {hours(user_stats['total'])}\n")
+    total = user_stats['total']
+    message = bold(f"Time spent coding {hours(total)}") + '\n\n'
     for k, stat in user_stats.items():
         if k != 'total':
-            message += text_from_stats(k, stat)
+            message += text_from_stats(k, stat, total)
 
     return message
 
