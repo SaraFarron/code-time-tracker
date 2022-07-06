@@ -1,0 +1,106 @@
+# English translations for PROJECT.
+# Copyright (C) 2022 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2022-07-06 22:19+0700\n"
+"PO-Revision-Date: 2022-07-06 21:28+0700\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.1\n"
+
+#: main.py:47
+msgid "All time stats"
+msgstr ""
+
+#: main.py:48
+msgid "Last week stats"
+msgstr ""
+
+#: main.py:49
+msgid "Update Wakatime API key"
+msgstr ""
+
+#: utils.py:26
+msgid ""
+"Hello! This bot can memorise your Wakatime stats and send you weekly "
+"reports! Click Start and bot will register you!"
+msgstr ""
+
+#: utils.py:28
+msgid ""
+"This bot stores your Wakatime stats in db and sends weekly reports, just "
+"like Wakatime itself but in Telegram! In order to work, bot needs your "
+"Wakatime API key, there is a button in /menu for that!"
+msgstr ""
+
+#: utils.py:31
+msgid "Please choose an action"
+msgstr ""
+
+#: utils.py:32
+msgid "Send me your new Wakatime key"
+msgstr ""
+
+#: utils.py:33
+msgid "error"
+msgstr ""
+
+#: utils.py:34
+msgid "credentials updated successfully!"
+msgstr ""
+
+#: utils.py:35
+msgid ""
+"Please send a valid api key, you can get it from your Wakatime profile "
+"page"
+msgstr ""
+
+#: utils.py:115
+msgid "projects"
+msgstr ""
+
+#: utils.py:116
+msgid "languages"
+msgstr ""
+
+#: utils.py:117
+msgid "machines"
+msgstr ""
+
+#: utils.py:118
+msgid "operating systems"
+msgstr ""
+
+#: utils.py:129
+#, python-format
+msgid "%d hrs %d mins"
+msgstr ""
+
+#: utils.py:129
+#, python-format
+msgid "%d mins"
+msgstr ""
+
+#: utils.py:159
+msgid "Time spent coding "
+msgstr ""
+
+#~ msgid "%s hrs %s mins"
+#~ msgstr ""
+
+#~ msgid "%s mins"
+#~ msgstr ""
+
+#~ msgid "Time spent coding"
+#~ msgstr ""
+

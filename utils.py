@@ -1,4 +1,3 @@
-from itertools import groupby
 from pathlib import Path
 from requests import get
 from datetime import timedelta, datetime
@@ -24,15 +23,16 @@ LOCALES_DIR = BASE_DIR / 'locales'
 i18n = I18nMiddleware(I18N_DOMAIN, LOCALES_DIR)
 _ = i18n.gettext
 
-
-class Response:
-    WELCOME = _('todo')
-    DESCRIPTION = _('todo')
-    MENU_ACTION = _('Please choose an action')
-    SEND_KEY = _('Send me your new Wakatime key')
-    ERROR = _('error')
-    API_KEY_SUCCESS = _('credentials updated successfully!')
-    API_KEY_FAILURE = _('Please send a valid api key, you can get it from your Wakatime profile page')
+WELCOME = _('Hello! This bot can memorise your Wakatime stats and send you weekly reports! Click Start and bot '
+            'will register you!')
+DESCRIPTION = _('This bot stores your Wakatime stats in db and sends weekly reports, just like Wakatime itself '
+                'but in Telegram! In order to work, bot needs your Wakatime API key, there is a button in /menu '
+                'for that!')
+MENU_ACTION = _('Please choose an action')
+SEND_KEY = _('Send me your new Wakatime key')
+ERROR = _('error')
+API_KEY_SUCCESS = _('credentials updated successfully!')
+API_KEY_FAILURE = _('Please send a valid api key, you can get it from your Wakatime profile page')
 
 
 def get_info(period: str, api_key) -> dict:
@@ -112,10 +112,10 @@ def get_user_stats(session: Session, start_date: datetime) -> dict:
     days = session.query(Day).filter(start_date <= Day.date).all()
     days = [day.id for day in days]
     stats = {
-        'projects': get_entry_stats(session, Project, days),
-        'languages': get_entry_stats(session, Language, days),
-        'machines': get_entry_stats(session, Machine, days),
-        'o_s': get_entry_stats(session, OperatingSystem, days),
+        _('projects'): get_entry_stats(session, Project, days),
+        _('languages'): get_entry_stats(session, Language, days),
+        _('machines'): get_entry_stats(session, Machine, days),
+        _('operating systems'): get_entry_stats(session, OperatingSystem, days),
         'total': session.query(func.sum(Day.total)).filter(Day.id.in_(days)).all()
     }
     stats['total'] = stats['total'][0][0]
@@ -126,7 +126,7 @@ def get_user_stats(session: Session, start_date: datetime) -> dict:
 def hours(seconds: float | int) -> str:
     h = int(seconds / 3600)
     m = round(seconds / 60 - h * 60)
-    return f'{h} hrs {m} mins' if h >= 1 else f'{m} mins'
+    return _('%d hrs %d mins') % (h, m) if h >= 1 else _('%d mins') % m
 
 
 def text_from_stats(name: str, stat: list, total_time: float | int) -> str:
@@ -141,7 +141,7 @@ def text_from_stats(name: str, stat: list, total_time: float | int) -> str:
             stat_dict[title] = value
     for k, v in stat_dict.items():
         percent = round(v / total_time * 100, 1)
-        string += pre(f'{k} {hours(v)} {percent}%')
+        string += pre('%s %s %d' % (k, hours(v), percent) + '%')
     return string + '\n'
 
 
@@ -156,7 +156,7 @@ def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str
         user_stats = get_user_stats(session, start_date)
 
     total = user_stats['total']
-    message = bold(f"Time spent coding {hours(total)}") + '\n\n'
+    message = bold(_("Time spent coding ") + hours(total)) + '\n\n'
     for k, stat in user_stats.items():
         if k != 'total':
             message += text_from_stats(k, stat, total)
@@ -173,5 +173,5 @@ def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> s
             user.api_key = key
             session.add(user)
             session.commit()
-        return Response.API_KEY_SUCCESS
-    return Response.API_KEY_FAILURE
+        return API_KEY_SUCCESS
+    return API_KEY_FAILURE

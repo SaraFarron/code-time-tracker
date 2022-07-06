@@ -2,7 +2,10 @@ import asyncio
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from aiogram import Bot, Dispatcher, executor
-from aiogram.types import Message, CallbackQuery, ParseMode
+from aiogram.types import (
+    Message, CallbackQuery, ParseMode, InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -11,9 +14,11 @@ from logging import basicConfig, getLogger, INFO
 from dotenv import load_dotenv
 from os import environ
 
-from keyboards import menu
 from models import Base, User
-from utils import stats_message, update_user_credentials, Response, i18n
+from utils import (
+    stats_message, update_user_credentials, i18n, _,
+    MENU_ACTION, DESCRIPTION, WELCOME, ERROR, SEND_KEY,
+)
 
 # logger
 basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -32,6 +37,22 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 dp.middleware.setup(i18n)
 
 
+def add_inline_buttons(buttons: dict[str: str], keyboard: InlineKeyboardMarkup) -> InlineKeyboardMarkup:
+    for button_name, button_callback in buttons.items():
+        keyboard.add(InlineKeyboardButton(button_name, callback_data=button_callback))
+    return keyboard
+
+
+menu_buttons = {
+    _('All time stats'): 'retrieve_all',
+    _('Last week stats'): 'last_week',
+    _('Update Wakatime API key'): 'update_key',
+}
+
+menu = InlineKeyboardMarkup()
+menu = add_inline_buttons(menu_buttons, menu)
+
+
 class UpdateWakatimeKey(StatesGroup):
     send_key = State()
     check_key = State()
@@ -40,13 +61,13 @@ class UpdateWakatimeKey(StatesGroup):
 @dp.message_handler(Command('menu'))
 async def send_menu(message: Message):
     logger.info(f'sent menu to {message.from_user.username}')
-    await message.answer(Response.MENU_ACTION, reply_markup=menu)
+    await message.answer(MENU_ACTION, reply_markup=menu)
 
 
 @dp.message_handler(Command('help'))
 async def send_help(message: Message):
     logger.info(f'sent help to {message.from_user.username}')
-    await message.answer(Response.DESCRIPTION)
+    await message.answer(DESCRIPTION)
 
 
 @dp.message_handler(Command('start'))
@@ -62,7 +83,7 @@ async def create_new_user(message: Message):
         session.commit()
 
     logger.info('new user registered ' + username)
-    await message.answer(Response.WELCOME)
+    await message.answer(WELCOME)
 
 
 @dp.callback_query_handler(text=['retrieve_all', 'last_week'])
@@ -84,14 +105,14 @@ async def show_tracking_stats(call: CallbackQuery):
             await call.message.answer(
                 stats_message(call.from_user.id, engine, 'Last 7 Days'), parse_mode=ParseMode.MARKDOWN_V2
             )
-        case _: await call.answer(Response.ERROR)
+        case _: await call.answer(ERROR)
 
 
 @dp.callback_query_handler(text=['update_key'])
 async def update_key(call: CallbackQuery):
     logger.info(call.from_user.username + ' updates api key')
     await UpdateWakatimeKey.send_key.set()
-    await call.message.answer(Response.SEND_KEY)
+    await call.message.answer(SEND_KEY)
     await UpdateWakatimeKey.next()
 
 
