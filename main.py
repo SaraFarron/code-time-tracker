@@ -15,7 +15,7 @@ from os import environ
 from keyboards import menu
 from models import Base, User
 from utils import (
-    update_user_tracking_info, stats_message, last_week_data,
+    update_user_tracking_info, stats_message,
     update_user_credentials,
 )
 
@@ -101,18 +101,6 @@ async def update_result(message: Message, state: FSMContext):
         update_user_credentials(user_api_key, message.from_user.id, engine)
     )
     await state.finish()
-
-
-def test_sql_db_update():
-    start = (datetime.today() - timedelta(days=120))
-    end = datetime.today()
-    with Session(engine) as session:
-        # Make if entry is already in db -> skip that
-        user = User(name='testuser')
-        session.add(user)
-        session.commit()
-        user = session.query(User).get(1)
-        update_user_tracking_info(session, start, end, user)
 
 
 def main():

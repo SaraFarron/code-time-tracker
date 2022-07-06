@@ -71,13 +71,13 @@ def update_user_tracking_info(session: Session, period: str, user: User) -> None
 
     for day in tracker_data:
         sql_objects = []
-        date = datetime.strptime(day['range']['date'], DATE_FORMAT)
+        date = datetime.strptime(day['range']['date'], DATE_FORMAT).date()
         if date in existing_dates:
             continue
         day_obj = Day(user_id=user.id, date=date)
         session.add(day_obj)
         session.commit()
-        day_obj = session.query(Day).filter(Day.user_id == user.id).order_by(-Day.id).first()
+        day_obj = session.query(Day).filter(Day.user_id == user.id & Day.date == date).first()
 
         for k, v in day.items():
             match k:
@@ -115,23 +115,21 @@ def get_user_key_or_404(user_id: int, engine: MockConnection):
     return user.api_key
 
 
-def get_entry_stats(session: Session, klass, day) -> list:
+def get_entry_stats(session: Session, klass, days) -> list:
     return session.query(
         klass.name, func.sum(klass.time)
-    ).filter(klass.day_id == day.id).group_by(klass.name).all()
+    ).filter(klass.day_id.in_(days)).group_by(klass.name).all()
 
 
 def get_stats_separated(session: Session, days: list, output) -> None:
-    for day in days:
-        output['projects'].extend(get_entry_stats(session, Project, day))
-        output['languages'].extend(get_entry_stats(session, Language, day))
-        output['machines'].extend(get_entry_stats(session, Machine, day))
-        output['o_s'].extend(get_entry_stats(session, OperatingSystem, day))
-        output['total'].extend(
-            session.query(func.sum(Day.total)).filter(Day.id >= day.id).all()
-        )
+    days = [day.id for day in days]
+    output['projects'] = get_entry_stats(session, Project, days)
+    output['languages'] = get_entry_stats(session, Language, days)
+    output['machines'] = get_entry_stats(session, Machine, days)
+    output['o_s'] = get_entry_stats(session, OperatingSystem, days)
+    output['total'] = session.query(func.sum(Day.total)).filter(Day.id.in_(days)).all()
 
-    output['total'] = [item[0] for item in output['total']]
+    output['total'] = output['total'][0][0]
 
 
 def get_user_stats(session: Session, start_date: datetime) -> dict:
@@ -178,76 +176,12 @@ def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str
             start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
         user_stats = get_user_stats(session, start_date)
 
-    message = f"{hours(sum(user_stats['total']))}\n"
+    message = f"{hours(user_stats['total'])}\n"
     for k, stat in user_stats.items():
         if k != 'total':
             message += text_from_stats(k, stat)
 
     return message
-
-
-def add_entries_text(day: dict, text: str, total: dict):
-    entries = ['projects', 'languages', 'editors', 'operating_systems', 'machines']
-    for entry in entries:
-        total_entry = total[entry]
-        total_time = 0
-        for e in day[entry]:
-            entry_name = e['name']
-            entry_seconds = e['total_seconds']
-            total_time += entry_seconds
-
-            text += f"""
-            * {entry} distribution:
-              * {entry_name} - {e['text']}, {e['percent']}%
-            """
-
-            total['grand_total_sum'] += day['grand_total']['total_seconds']
-            if entry_name in total_entry.keys():
-                total_entry[entry_name]['total_seconds'] += entry_seconds
-            else:
-                total_entry[entry_name] = {
-                    'total_seconds': entry_seconds,
-                }
-        total_entry['percent'] = round(total_entry['total_seconds'] / total_time)
-
-
-def last_week_data(user_id: int, engine: MockConnection) -> str:
-    key = get_user_key_or_404(user_id, engine)
-    start = datetime.today() - timedelta(days=7)
-    end = datetime.today()
-    time_period = 'Last 7 Days'
-    summaries = get_info(time_period, key)['date']
-    totals = {
-        'grand_total_sum': 0,
-        'projects': {},
-        'languages': {},
-        'operation_systems': {},
-        'machines': {},
-    }
-
-    summaries_text = '<h2> Your week summaries </h2>\n'
-    for day in summaries:
-        summaries_text += f"""
-        ###{day['range']['date']}
-        * total time spent <em>{day['grand_total']['text']}</em>
-        * projects distribution:
-        """
-        add_entries_text(day, summaries_text, totals)
-
-    summaries_text += f"""
-    ## Total time spent
-    {totals['grand_total_sum']}
-    * projects distribution:
-      * {totals['projects']}
-    * languages distribution:
-      * {totals['languages']}
-    * OS distribution:
-      * {totals['oss']}
-    * machines distribution
-      * {totals['machines']}
-    """
-
-    return 'TODO last week stats ' + str(user_id)
 
 
 def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> str:
