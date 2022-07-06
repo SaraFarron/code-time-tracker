@@ -1,7 +1,9 @@
 from itertools import groupby
+from pathlib import Path
 from requests import get
 from datetime import timedelta, datetime
 from aiogram.utils.markdown import bold, pre
+from aiogram.contrib.middlewares.i18n import I18nMiddleware
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -15,26 +17,22 @@ from models import (
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 DATE_FORMAT = '%Y-%m-%d'
 
+# i18n
+I18N_DOMAIN = 'time_tracker'
+BASE_DIR = Path(__file__).parent
+LOCALES_DIR = BASE_DIR / 'locales'
+i18n = I18nMiddleware(I18N_DOMAIN, LOCALES_DIR)
+_ = i18n.gettext
 
-def create_week_periods(start: datetime, end: datetime) -> list:
-    week_day = start.weekday()
-    if week_day != 0:
-        start = start - timedelta(days=week_day)  # Every week starts with monday
 
-    weekly_data = []
-    shift = start
-    for v, g in groupby(
-            ((start + timedelta(days=i)).weekday() for i in range(1, (end - start).days + 1))
-    ):
-        days = sum(7 for _ in g)
-        weekly_data.append({
-            'start': shift,
-            'end': shift + timedelta(days=days),
-        })
-        shift = shift + timedelta(days=days)
-
-    print('Time periods created')
-    return weekly_data
+class Response:
+    WELCOME = _('todo')
+    DESCRIPTION = _('todo')
+    MENU_ACTION = _('Please choose an action')
+    SEND_KEY = _('Send me your new Wakatime key')
+    ERROR = _('error')
+    API_KEY_SUCCESS = _('credentials updated successfully!')
+    API_KEY_FAILURE = _('Please send a valid api key, you can get it from your Wakatime profile page')
 
 
 def get_info(period: str, api_key) -> dict:
@@ -46,7 +44,6 @@ def get_info(period: str, api_key) -> dict:
     response = get(url, params=params)
     assert response.status_code == 200, response.text
 
-    print('successfully retrieved data')
     return response.json()
 
 
@@ -103,8 +100,6 @@ def update_user_tracking_info(session: Session, period: str, user: User) -> None
             sql_objects += objects
             session.add_all(sql_objects)
             session.commit()
-
-    print('tracking info updated')
 
 
 def get_entry_stats(session: Session, klass, days) -> list:
@@ -178,5 +173,5 @@ def update_user_credentials(key: str, user_id: int, engine: MockConnection) -> s
             user.api_key = key
             session.add(user)
             session.commit()
-        return 'credentials updated successfully!'
-    return 'Please send a valid api key, you can get it from your Wakatime profile page'
+        return Response.API_KEY_SUCCESS
+    return Response.API_KEY_FAILURE

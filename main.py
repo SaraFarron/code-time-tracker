@@ -1,6 +1,6 @@
 import asyncio
-from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from aiogram import Bot, Dispatcher, executor
 from aiogram.types import Message, CallbackQuery, ParseMode
 from aiogram.dispatcher import FSMContext
@@ -13,7 +13,7 @@ from os import environ
 
 from keyboards import menu
 from models import Base, User
-from utils import stats_message, update_user_credentials
+from utils import stats_message, update_user_credentials, Response, i18n
 
 # logger
 basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -25,11 +25,11 @@ engine = create_engine('sqlite:///sqlite.db', echo=True, future=True)
 Base.metadata.create_all(engine)
 
 # tg bot initialisation
+
 load_dotenv()
 bot = Bot(environ.get('BOT_TOKEN'))
 dp = Dispatcher(bot, storage=MemoryStorage())
-
-description = 'TODO'
+dp.middleware.setup(i18n)
 
 
 class UpdateWakatimeKey(StatesGroup):
@@ -40,13 +40,13 @@ class UpdateWakatimeKey(StatesGroup):
 @dp.message_handler(Command('menu'))
 async def send_menu(message: Message):
     logger.info(f'sent menu to {message.from_user.username}')
-    await message.answer("Please choose an action", reply_markup=menu)
+    await message.answer(Response.MENU_ACTION, reply_markup=menu)
 
 
 @dp.message_handler(Command('help'))
 async def send_help(message: Message):
     logger.info(f'sent help to {message.from_user.username}')
-    await message.answer(description)
+    await message.answer(Response.DESCRIPTION)
 
 
 @dp.message_handler(Command('start'))
@@ -62,7 +62,7 @@ async def create_new_user(message: Message):
         session.commit()
 
     logger.info('new user registered ' + username)
-    await message.answer('TODO message with greetings')
+    await message.answer(Response.WELCOME)
 
 
 @dp.callback_query_handler(text=['retrieve_all', 'last_week'])
@@ -84,14 +84,14 @@ async def show_tracking_stats(call: CallbackQuery):
             await call.message.answer(
                 stats_message(call.from_user.id, engine, 'Last 7 Days'), parse_mode=ParseMode.MARKDOWN_V2
             )
-        case _: await call.answer()
+        case _: await call.answer(Response.ERROR)
 
 
 @dp.callback_query_handler(text=['update_key'])
 async def update_key(call: CallbackQuery):
     logger.info(call.from_user.username + ' updates api key')
     await UpdateWakatimeKey.send_key.set()
-    await call.message.answer('Send me your new Wakatime key')
+    await call.message.answer(Response.SEND_KEY)
     await UpdateWakatimeKey.next()
 
 
