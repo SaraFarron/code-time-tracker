@@ -1,9 +1,8 @@
 import asyncio
-from datetime import timedelta, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from aiogram import Bot, Dispatcher, executor
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ParseMode
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -14,10 +13,7 @@ from os import environ
 
 from keyboards import menu
 from models import Base, User
-from utils import (
-    update_user_tracking_info, stats_message,
-    update_user_credentials,
-)
+from utils import stats_message, update_user_credentials
 
 # logger
 basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,7 +26,7 @@ Base.metadata.create_all(engine)
 
 # tg bot initialisation
 load_dotenv()
-bot = Bot(environ.get('BOT_TOKEN'), parse_mode='HTML')
+bot = Bot(environ.get('BOT_TOKEN'))
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 description = 'TODO'
@@ -72,17 +68,22 @@ async def create_new_user(message: Message):
 @dp.callback_query_handler(text=['retrieve_all', 'last_week'])
 async def show_tracking_stats(call: CallbackQuery):
     match call.data:
+
         case 'retrieve_all':
             logger.info('sent all stats to ' + call.from_user.username)
             text = stats_message(call.from_user.id, engine, 'Last 30 Days')
+
             if len(text) > 4096:
                 await call.message.answer(text[:4096])
                 await call.message.answer(text[4096:])
             else:
-                await call.message.answer(text)
+                await call.message.answer(text, parse_mode=ParseMode.HTML)
+
         case 'last_week':
             logger.info('sent last stats to ' + call.from_user.username)
-            await call.message.answer(stats_message(call.from_user.id, engine, 'Last 7 Days'))
+            await call.message.answer(
+                stats_message(call.from_user.id, engine, 'Last 7 Days'), parse_mode=ParseMode.MARKDOWN_V2
+            )
         case _: await call.answer()
 
 

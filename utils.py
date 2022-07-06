@@ -1,7 +1,7 @@
 from itertools import groupby
 from requests import get
 from datetime import timedelta, datetime
-
+from aiogram.utils.markdown import text, bold, italic, code, escape_md
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -107,41 +107,23 @@ def update_user_tracking_info(session: Session, period: str, user: User) -> None
     print('tracking info updated')
 
 
-def get_user_key_or_404(user_id: int, engine: MockConnection):
-    with Session(engine) as session:
-        user = session.query(User).filter(User.telegram_id == user_id)
-    if not user.api_key:
-        raise 'No api key'
-    return user.api_key
-
-
 def get_entry_stats(session: Session, klass, days) -> list:
     return session.query(
         klass.name, func.sum(klass.time)
     ).filter(klass.day_id.in_(days)).group_by(klass.name).all()
 
 
-def get_stats_separated(session: Session, days: list, output) -> None:
-    days = [day.id for day in days]
-    output['projects'] = get_entry_stats(session, Project, days)
-    output['languages'] = get_entry_stats(session, Language, days)
-    output['machines'] = get_entry_stats(session, Machine, days)
-    output['o_s'] = get_entry_stats(session, OperatingSystem, days)
-    output['total'] = session.query(func.sum(Day.total)).filter(Day.id.in_(days)).all()
-
-    output['total'] = output['total'][0][0]
-
-
 def get_user_stats(session: Session, start_date: datetime) -> dict:
     days = session.query(Day).filter(start_date <= Day.date).all()
+    days = [day.id for day in days]
     stats = {
-        'projects': [],
-        'languages': [],
-        'machines': [],
-        'o_s': [],
-        'total': [],
+        'projects': get_entry_stats(session, Project, days),
+        'languages': get_entry_stats(session, Language, days),
+        'machines': get_entry_stats(session, Machine, days),
+        'o_s': get_entry_stats(session, OperatingSystem, days),
+        'total': session.query(func.sum(Day.total)).filter(Day.id.in_(days)).all()
     }
-    get_stats_separated(session, days, stats)
+    stats['total'] = stats['total'][0][0]
 
     return stats
 
@@ -153,8 +135,9 @@ def hours(seconds: float | int) -> str:
 
 
 def text_from_stats(name: str, stat: list) -> str:
-    text = f'{name}\n'
+    string = bold(f'{name}\n')
     stat_dict = {}
+    stat = sorted(stat, key=lambda x: x[1], reverse=True)
     for record in stat:
         title, value = record[0], record[1]
         if title in stat_dict.keys():
@@ -162,8 +145,8 @@ def text_from_stats(name: str, stat: list) -> str:
         else:
             stat_dict[title] = value
     for k, v in stat_dict.items():
-        text += f'{k}\t{hours(v)}\n'
-    return text + '\n'
+        string += code(f'{k} {hours(v)}\n')
+    return string + '\n'
 
 
 def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str:
@@ -176,7 +159,7 @@ def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str
             start_date = datetime.strptime('2020-01-01T00:00:00Z', DATETIME_FORMAT)
         user_stats = get_user_stats(session, start_date)
 
-    message = f"{hours(user_stats['total'])}\n"
+    message = bold(f"Total spent coding {hours(user_stats['total'])}\n")
     for k, stat in user_stats.items():
         if k != 'total':
             message += text_from_stats(k, stat)
