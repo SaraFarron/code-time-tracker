@@ -75,6 +75,8 @@ async def create_new_user(message: Message):
     user_id = message.from_user.id
     username = message.from_user.username
     with Session(engine) as session:
+        if session.query(User).filter(User.telegram_id == user_id):
+            return await message.answer(_('You are already registered'))
         user = User(
             telegram_id=user_id,
             name=username,
@@ -93,18 +95,13 @@ async def show_tracking_stats(call: CallbackQuery):
         case 'retrieve_all':
             logger.info('sent all stats to ' + call.from_user.username)
             text = stats_message(call.from_user.id, engine, 'Last 30 Days')
-
-            if len(text) > 4096:
-                await call.message.answer(text[:4096])
-                await call.message.answer(text[4096:])
-            else:
-                await call.message.answer(text, parse_mode=ParseMode.HTML)
+            await call.message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
 
         case 'last_week':
             logger.info('sent last stats to ' + call.from_user.username)
-            await call.message.answer(
-                stats_message(call.from_user.id, engine, 'Last 7 Days'), parse_mode=ParseMode.MARKDOWN_V2
-            )
+            text = stats_message(call.from_user.id, engine, 'Last 7 Days')
+            await call.message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
+
         case _: await call.answer(ERROR)
 
 
@@ -125,10 +122,5 @@ async def update_result(message: Message, state: FSMContext):
     await state.finish()
 
 
-def main():
-    pass
-
-
 if __name__ == '__main__':
-    # main()
     executor.start_polling(dp)

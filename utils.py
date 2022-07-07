@@ -16,6 +16,7 @@ from models import (
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 DATE_FORMAT = '%Y-%m-%d'
 
+
 # i18n
 I18N_DOMAIN = 'time_tracker'
 BASE_DIR = Path(__file__).parent
@@ -141,13 +142,17 @@ def text_from_stats(name: str, stat: list, total_time: float | int) -> str:
             stat_dict[title] = value
     for k, v in stat_dict.items():
         percent = round(v / total_time * 100, 1)
-        string += pre('%s %s %d' % (k, hours(v), percent) + '%')
+        if percent >= 1:
+            string += pre('%s %s %d' % (k, hours(v), percent) + '%')
     return string + '\n'
 
 
 def stats_message(user_id: int, engine: MockConnection, time_period: str) -> str:
     with Session(engine) as session:
         user = session.query(User).filter(User.telegram_id == user_id).one()
+        if not user.api_key:
+            return 'You need to tell the bot your API key first'
+
         update_user_tracking_info(session, time_period, user)
         if '7' in time_period:
             start_date = datetime.today() - timedelta(days=7)
