@@ -1,126 +1,94 @@
-import asyncio
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-from aiogram import Bot, Dispatcher, executor
-from aiogram.types import (
-    Message, CallbackQuery, ParseMode, InlineKeyboardMarkup,
-    InlineKeyboardButton,
-)
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Command
-from aiogram.dispatcher.filters.state import StatesGroup, State
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from logging import basicConfig, getLogger, INFO
-from dotenv import load_dotenv
-from os import environ
+import json
 
-from models import Base, User
-from utils import (
-    stats_message, update_user_credentials, i18n, _,
-    MENU_ACTION, DESCRIPTION, WELCOME, ERROR, SEND_KEY,
-)
+from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, ForeignKey, Date, Float, Time
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, relationship
 
-# logger
-basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            level=INFO)
-logger = getLogger(__name__)
+engine = create_engine("sqlite:///db.sqlite3")
+session = sessionmaker(bind=engine)
+meta = MetaData()
 
-# db initialisation
-engine = create_engine('sqlite:///sqlite.db', echo=True, future=True)
-Base.metadata.create_all(engine)
-
-# tg bot initialisation
-
-load_dotenv()
-bot = Bot(environ.get('BOT_TOKEN'))
-dp = Dispatcher(bot, storage=MemoryStorage())
-dp.middleware.setup(i18n)
+class Base(DeclarativeBase):
+    pass
 
 
-def add_inline_buttons(buttons: dict[str: str], keyboard: InlineKeyboardMarkup) -> InlineKeyboardMarkup:
-    for button_name, button_callback in buttons.items():
-        keyboard.add(InlineKeyboardButton(button_name, callback_data=button_callback))
-    return keyboard
+class Data(Base):
+    id = Column(Integer, primary_key=True, index=True)
+    
+    decimal = Column(Float)
+    digital = Column(Time)
+    hours = Column(Integer)
+    minutes = Column(Integer)
+    name = Column(String)
+    percent = Column(Float)
+    seconds = Column(Integer)
+    text = Column(String)
+    total_seconds = Column(Float)
 
 
-menu_buttons = {
-    _('All time stats'): 'retrieve_all',
-    _('Last week stats'): 'last_week',
-    _('Update Wakatime API key'): 'update_key',
-}
-
-menu = InlineKeyboardMarkup()
-menu = add_inline_buttons(menu_buttons, menu)
+class Categories(Base):
+    __tablename__ = "categories"
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Integer, ForeignKey("data.id"))
+    days = relationship("Days", back_populates="categories")
 
 
-class UpdateWakatimeKey(StatesGroup):
-    send_key = State()
-    check_key = State()
+class Editors(Base):
+    __tablename__ = "editors"
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Integer, ForeignKey("data.id"))
+    days = relationship("Days", back_populates="editors")
 
 
-@dp.message_handler(Command('menu'))
-async def send_menu(message: Message):
-    logger.info(f'sent menu to {message.from_user.username}')
-    await message.answer(MENU_ACTION, reply_markup=menu)
+class Machines(Base):
+    __tablename__ = "machines"
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Integer, ForeignKey("data.id"))
+    days = relationship("Days", back_populates="machines")
 
 
-@dp.message_handler(Command('help'))
-async def send_help(message: Message):
-    logger.info(f'sent help to {message.from_user.username}')
-    await message.answer(DESCRIPTION)
+class Languages(Base):
+    __tablename__ = "languages"
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Integer, ForeignKey("data.id"))
+    days = relationship("Days", back_populates="languages")
 
 
-@dp.message_handler(Command('start'))
-async def create_new_user(message: Message):
-    user_id = message.from_user.id
-    username = message.from_user.username
-    with Session(engine) as session:
-        if session.query(User).filter(User.telegram_id == user_id):
-            return await message.answer(_('You are already registered'))
-        user = User(
-            telegram_id=user_id,
-            name=username,
-        )
-        session.add(user)
-        session.commit()
-
-    logger.info('new user registered ' + username)
-    await message.answer(WELCOME)
+class OperatingSystems(Base):
+    __tablename__ = "operating_systems"
+    id = Column(Integer, primary_key=True, index=True)
+    data = Column(Integer, ForeignKey("data.id"))
+    days = relationship("Days", back_populates="operating_systems")
 
 
-@dp.callback_query_handler(text=['retrieve_all', 'last_week'])
-async def show_tracking_stats(call: CallbackQuery):
-    match call.data:
-
-        case 'retrieve_all':
-            logger.info('sent all stats to ' + call.from_user.username)
-            text = stats_message(call.from_user.id, engine, 'Last 30 Days')
-            await call.message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
-
-        case 'last_week':
-            logger.info('sent last stats to ' + call.from_user.username)
-            text = stats_message(call.from_user.id, engine, 'Last 7 Days')
-            await call.message.answer(text, parse_mode=ParseMode.MARKDOWN_V2)
-
-        case _: await call.answer(ERROR)
+class Projects(Base):
+    __tablename__ = "projects"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    data = Column(Integer, ForeignKey("data.id"))
+    days = relationship("User", back_populates="projects")
 
 
-@dp.callback_query_handler(text=['update_key'])
-async def update_key(call: CallbackQuery):
-    logger.info(call.from_user.username + ' updates api key')
-    await UpdateWakatimeKey.send_key.set()
-    await call.message.answer(SEND_KEY)
-    await UpdateWakatimeKey.next()
+class Days(Base):
+    __tablename__ = "days"
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date)
+    categories_id = Column(Integer, ForeignKey("categories.id"))
+    categories = relationship("Categories", back_populates="days")
+    projects = relationship("Projects", back_populates="days")
+    operating_systems = relationship("OperatingSystems", back_populates="days")
+    languages = relationship("Languages", back_populates="days")
+    machines = relationship("Machines", back_populates="days")
+    editors = relationship("Editors", back_populates="days")
 
 
-@dp.message_handler(state=UpdateWakatimeKey.check_key)
-async def update_result(message: Message, state: FSMContext):
-    user_api_key = message.text
-    await message.answer(
-        update_user_credentials(user_api_key, message.from_user.id, engine)
+
+def import_json_data(path: str):
+    data = json.load(path)["days"]
+    days = Table(
+        "days", meta,
+        Column("id", Integer, primary_key=True),
+        Column("date", Date),
+        Column("categories", ForeignKey),
     )
-    await state.finish()
-
-
-if __name__ == '__main__':
-    executor.start_polling(dp)
+    for day in data:
+        
