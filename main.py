@@ -1,94 +1,124 @@
 import json
 
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, ForeignKey, Date, Float, Time
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, relationship
+from sqlalchemy import (
+    create_engine,
+    MetaData,
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    Date,
+    Float,
+    Time,
+)
 
 engine = create_engine("sqlite:///db.sqlite3")
 session = sessionmaker(bind=engine)
 meta = MetaData()
+
 
 class Base(DeclarativeBase):
     pass
 
 
 class Data(Base):
-    id = Column(Integer, primary_key=True, index=True)
-    
     decimal = Column(Float)
     digital = Column(Time)
     hours = Column(Integer)
     minutes = Column(Integer)
-    name = Column(String)
     percent = Column(Float)
     seconds = Column(Integer)
     text = Column(String)
     total_seconds = Column(Float)
 
 
-class Categories(Base):
+class Categories(Data):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
-    data = Column(Integer, ForeignKey("data.id"))
-    days = relationship("Days", back_populates="categories")
+    name = Column(String)
 
 
-class Editors(Base):
+class Editors(Data):
     __tablename__ = "editors"
     id = Column(Integer, primary_key=True, index=True)
-    data = Column(Integer, ForeignKey("data.id"))
-    days = relationship("Days", back_populates="editors")
+    name = Column(String)
 
 
-class Machines(Base):
+class Machines(Data):
     __tablename__ = "machines"
     id = Column(Integer, primary_key=True, index=True)
-    data = Column(Integer, ForeignKey("data.id"))
-    days = relationship("Days", back_populates="machines")
+    name = Column(String)
 
 
-class Languages(Base):
+class Languages(Data):
     __tablename__ = "languages"
     id = Column(Integer, primary_key=True, index=True)
-    data = Column(Integer, ForeignKey("data.id"))
-    days = relationship("Days", back_populates="languages")
+    name = Column(String)
 
 
-class OperatingSystems(Base):
+class OperatingSystems(Data):
     __tablename__ = "operating_systems"
     id = Column(Integer, primary_key=True, index=True)
-    data = Column(Integer, ForeignKey("data.id"))
-    days = relationship("Days", back_populates="operating_systems")
+    name = Column(String)
 
 
-class Projects(Base):
+class Projects(Data):
     __tablename__ = "projects"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    data = Column(Integer, ForeignKey("data.id"))
-    days = relationship("User", back_populates="projects")
 
 
 class Days(Base):
     __tablename__ = "days"
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date)
-    categories_id = Column(Integer, ForeignKey("categories.id"))
-    categories = relationship("Categories", back_populates="days")
-    projects = relationship("Projects", back_populates="days")
-    operating_systems = relationship("OperatingSystems", back_populates="days")
-    languages = relationship("Languages", back_populates="days")
-    machines = relationship("Machines", back_populates="days")
-    editors = relationship("Editors", back_populates="days")
+    categories_id = Column(
+        Integer, ForeignKey("categories.id", ondelete="SET_NULL"), nullable=True
+    )
+    projects_id = Column(
+        Integer, ForeignKey("projects.id", ondelete="SET_NULL"), nullable=True
+    )
+    operating_systems_id = Column(
+        Integer, ForeignKey("operating_systems.id", ondelete="SET_NULL"), nullable=True
+    )
+    languages_id = Column(
+        Integer, ForeignKey("languages.id", ondelete="SET_NULL"), nullable=True
+    )
+    machines_id = Column(
+        Integer, ForeignKey("machines.id", ondelete="SET_NULL"), nullable=True
+    )
+    editors_id = Column(
+        Integer, ForeignKey("editors.id", ondelete="SET_NULL"), nullable=True
+    )
 
+
+def create_generic_table(data: list, day: dict, name: str, table: Base):
+    table_data = day.get(name, {})
+    if table_data:
+        for item in table_data:
+            data.append(table(**item))
 
 
 def import_json_data(path: str):
-    data = json.load(path)["days"]
-    days = Table(
-        "days", meta,
-        Column("id", Integer, primary_key=True),
-        Column("date", Date),
-        Column("categories", ForeignKey),
-    )
-    for day in data:
-        
+    data_types = {
+        "categories": Categories,
+        "editors": Editors,
+        "machines": Machines,
+        "languages": Languages,
+        "operating_systems": OperatingSystems,
+    }
+    json_data = json.load(path)["days"]
+    data = []
+    for day in json_data:
+        for data_type, table in data_types.items():
+            create_generic_table(data, day, data_type, table)
+        projects = day.get("projects", {})
+        if projects:
+            for project in projects:
+                data.append(
+                    Projects(
+                        name=project["name"],
+                        **project["grand_total"],
+                    )
+                )
+    meta.create_all(engine)
