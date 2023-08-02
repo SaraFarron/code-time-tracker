@@ -12,6 +12,7 @@ from sqlalchemy import (
     Interval,
 )
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from plotly import graph_objects as go
 
 engine = create_engine("sqlite:///db.sqlite3")
 Session = sessionmaker(bind=engine)
@@ -139,6 +140,12 @@ def import_json_data(path: str):
         day_row = Days(date=datetime.strptime(day["date"], "%Y-%m-%d").date(), **day_data)
         session.add(day_row)
     session.commit()
+
+
+def create_plots():
+    fig = go.Figure()
+    data = session.query(Days).all()
+    
 
 
 Base.metadata.create_all(engine)
