@@ -26,20 +26,28 @@ def populate_table(items: list, pull: dict, date: str, *path):
         pull[name][date] = round(seconds / 3600, 2)
 
 
+def append_day_time(date: str, days: dict, total_seconds: float):
+    days["time"].append(datetime.strptime(date, "%Y-%m-%d"))
+    days["total_minutes"].append(round(total_seconds / 3600, 2))
+
+
 def import_data():
     projects, op_sys, langs = {}, {}, {}
+    days = {"time": [], "total_minutes": []}
     for day in get_data("data.json"):
         date = day["date"]
+        append_day_time(date, days, day["grand_total"]["total_seconds"])
         prjcts = day.get("projects", {})
         if prjcts:
-            populate_table(prjcts, projects, date, "grand_total", "total_seconds")
+            populate_table(prjcts, projects, date,
+                           "grand_total", "total_seconds")
         opers = day.get("operating_systems", {})
         if opers:
             populate_table(opers, op_sys, date, "total_seconds")
         languages = day.get("languages", {})
         if languages:
             populate_table(languages, langs, date, "total_seconds")
-    return projects, op_sys, langs
+    return projects, op_sys, langs, days
 
 
 def create_cumulative_data(data: list):
@@ -53,25 +61,40 @@ def create_cumulative_data(data: list):
     return res_x, res_y
 
 
+def create_bar(data: dict):
+    fig = make_subplots(1, 1)
+    fig.add_bar(
+        x=data["time"], y=data["total_minutes"], name="activity",
+        row=1, col=1
+    )
+    fig.update_layout(title_text="Bars", template="plotly_dark")
+    fig.show()
+
+
 def create_plot(data: dict):
     fig = make_subplots(1, 1)
     for name, value in data.items():
-        fig.add_trace(go.Line(x=value["time"], y=value["hours"], name=name), row=1, col=1)
+        fig.add_trace(
+            go.Line(x=value["time"], y=value["hours"], name=name),
+            row=1,
+            col=1
+        )
     fig.update_layout(title_text="Plots", template="plotly_dark")
     fig.show()
 
 
 def main():
-    projects, opers, languages = import_data()
-    
+    projects, opers, languages, days = import_data()
+
     for dataset in (projects, opers, languages):
         for dataname, datavalue in dataset.items():
             x_value, y_value = create_cumulative_data(datavalue)
             dataset[dataname] = {"time": x_value, "hours": y_value}
-            
+
     create_plot(projects)
     create_plot(opers)
     create_plot(languages)
+    create_bar(days)
 
 
 if __name__ == "__main__":
