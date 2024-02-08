@@ -1,0 +1,20 @@
+-i https://pypi.org/simple
+annotated-types==0.6.0 ; python_version >= '3.8'
+asgiref==3.7.2 ; python_version >= '3.7'
+contextlib2==21.6.0 ; python_version >= '3.6'
+django==5.0.2 ; python_version >= '3.10'
+django-debug-toolbar==4.3.0
+django-extensions==3.2.3
+django-jazzmin==2.6.0
+django-ninja==1.1.0
+django-ninja-extra==0.20.4
+greenlet==3.0.3 ; platform_machine == 'aarch64' or (platform_machine == 'ppc64le' or (platform_machine == 'x86_64' or (platform_machine == 'amd64' or (platform_machine == 'AMD64' or (platform_machine == 'win32' or platform_machine == 'WIN32')))))
+injector==0.21.0
+packaging==23.2 ; python_version >= '3.7'
+plotly==5.18.0
+pydantic==2.6.1 ; python_version >= '3.8'
+pydantic-core==2.16.2 ; python_version >= '3.8'
+sqlalchemy==2.0.25
+sqlparse==0.4.4 ; python_version >= '3.5'
+tenacity==8.2.3 ; python_version >= '3.7'
+typing-extensions==4.9.0 ; python_version >= '3.8'

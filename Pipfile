@@ -6,6 +6,11 @@ name = "pypi"
 [packages]
 sqlalchemy = "*"
 plotly = "*"
+django-ninja = "*"
+django-jazzmin = "*"
+django-extensions = "*"
+django-ninja-extra = "*"
+django-debug-toolbar = "*"
 
 [dev-packages]
 

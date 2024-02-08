@@ -32,7 +32,7 @@ def append_day_time(date: str, days: dict, total_seconds: float):
 
 
 def import_data():
-    projects, op_sys, langs = {}, {}, {}
+    projects, op_sys, langs, devices = {}, {}, {}, {}
     days = {"time": [], "total_minutes": []}
     for day in get_data("data.json"):
         date = day["date"]
@@ -47,7 +47,10 @@ def import_data():
         languages = day.get("languages", {})
         if languages:
             populate_table(languages, langs, date, "total_seconds")
-    return projects, op_sys, langs, days
+        machines = day.get("machines", {})
+        if machines:
+            populate_table(machines, devices, date, "total_seconds")
+    return projects, op_sys, langs, days, devices
 
 
 def create_cumulative_data(data: list):
@@ -79,22 +82,23 @@ def create_plot(data: dict):
             row=1,
             col=1
         )
-    fig.update_layout(title_text="Plots", template="plotly_dark")
+    fig.update_layout(title_text="Plots", )
     fig.show()
 
 
 def main():
-    projects, opers, languages, days = import_data()
+    projects, opers, languages, days, devices = import_data()
 
-    for dataset in (projects, opers, languages):
+    for dataset in projects, opers, languages, devices:
         for dataname, datavalue in dataset.items():
             x_value, y_value = create_cumulative_data(datavalue)
             dataset[dataname] = {"time": x_value, "hours": y_value}
 
-    create_plot(projects)
-    create_plot(opers)
-    create_plot(languages)
-    create_bar(days)
+    # create_plot(projects)
+    # create_plot(opers)
+    # create_plot(languages)
+    create_plot(devices)
+    # create_bar(days)
 
 
 if __name__ == "__main__":
