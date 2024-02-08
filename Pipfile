@@ -11,6 +11,7 @@ django-jazzmin = "*"
 django-extensions = "*"
 django-ninja-extra = "*"
 django-debug-toolbar = "*"
+werkzeug = "*"
 
 [dev-packages]
 
