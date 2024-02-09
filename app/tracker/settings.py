@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'debug_toolbar',
     'ninja_extra',
+    'wakatime_data',
 ]
 
 MIDDLEWARE = [

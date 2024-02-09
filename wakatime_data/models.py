@@ -1,5 +1,5 @@
-from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import password_changed
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -25,8 +25,8 @@ class Profile(models.Model):
         return self.user.username
 
     class Meta:
-        verbose_name = "profile"
-        verbose_name_plural = "profiles"
+        verbose_name = _("profile")
+        verbose_name_plural = _("profiles")
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -44,6 +44,14 @@ class Day(models.Model):
     profile = models.ForeignKey(
         Profile, on_delete=models.CASCADE, verbose_name=_("profile")
     )
+
+    def __str__(self) -> str:
+        return str(self.date)
+
+    class Meta:
+        unique_together = ("date", "profile")
+        verbose_name = _("day")
+        verbose_name_plural = _("days")
 
 
 class WakatimeData(models.Model):
@@ -74,8 +82,8 @@ class WakatimeData(models.Model):
 
     class Meta:
         unique_together = ("category", "name")
-        verbose_name = "wakatime data"
-        verbose_name_plural = "wakatime data"
+        verbose_name = _("wakatime data")
+        verbose_name_plural = _("wakatime data")
 
     def __str__(self) -> str:
         return f"{self.category} - {self.name}"
