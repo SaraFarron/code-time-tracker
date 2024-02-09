@@ -38,6 +38,12 @@ class Profile(models.Model):
         self.wakatime_token = make_password(raw_wakatime_token)
         self._wakatime_token = raw_wakatime_token
 
+    def create(self, *args, **kwargs):
+        # for some reason does not work in admin
+        raw_wakatime_token = kwargs.pop("wakatime_token")
+        kwargs["wakatime_token"] = make_password(raw_wakatime_token)
+        super().create(*args, **kwargs)
+
 
 class Day(models.Model):
     date = models.DateField(verbose_name=_("date"))
