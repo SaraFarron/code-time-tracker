@@ -76,17 +76,18 @@ class WakatimeData(models.Model):
     decimal = models.DecimalField(
         max_digits=5, decimal_places=2, verbose_name=_("decimal")
     )
-    digital = models.DurationField(verbose_name=_("digital"))
+    digital = models.CharField(max_length=10, verbose_name=_("digital"))
     name = models.CharField(max_length=255, verbose_name=_("name"))
     total_seconds = models.FloatField(verbose_name=_("total_seconds"))
     percent = models.DecimalField(
-        max_digits=3, decimal_places=2, verbose_name=_("percent")
+        max_digits=5, decimal_places=2, verbose_name=_("percent")
     )
     day = models.ForeignKey(
         Day, on_delete=models.CASCADE, verbose_name=_("day")
     )
 
     class Meta:
+        # TODO unique contraint failed after importing
         unique_together = ("category", "name")
         verbose_name = _("wakatime data")
         verbose_name_plural = _("wakatime data")

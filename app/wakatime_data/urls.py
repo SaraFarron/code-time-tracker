@@ -9,7 +9,7 @@ api = NinjaExtraAPI()
 
 @api_controller(
     "/dumps/",
-    tags=["Dumps"], description="WakaTime Dumps",
+    tags=["Dumps"],
     permissions=permissions.IsAuthenticated
 )
 class WakaDumps:
